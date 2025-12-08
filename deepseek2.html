@@ -190,13 +190,16 @@
             @media (max-width: 640px) {
                 /* 修复棋盘显示不全的问题 */
                 #sudoku-board {
-                    max-height: calc(100vw - 20px) !important;
+                    max-height: none !important;
+                    height: auto !important;
+                    aspect-ratio: 1 / 1 !important;
                     margin-bottom: 10px !important;
                 }
                 
                 .board-container {
                     padding: 2px !important;
                     margin: 0 auto 10px auto !important;
+                    max-width: 98vw !important;
                 }
                 
                 .main-number {
