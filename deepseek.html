@@ -1,0 +1,2150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>魔法数独 | 神秘数字谜题</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        // 柔和配色方案
+                        primary: '#7C9EB2',      // 柔和蓝灰色
+                        primaryLight: '#A8C6D9',  // 浅蓝灰
+                        secondary: '#5A7B8C',     // 深蓝灰
+                        accent: '#D9BFA9',       // 米棕色作为点缀
+                        parchment: '#F8F4E9',    // 柔和米白色
+                        darkMagic: '#2C3E50',    // 深灰蓝色背景，更柔和
+                        error: '#E57373',        // 柔和红色
+                        success: '#81C784',      // 柔和绿色
+                        cellBg: '#FFFFFF',       // 单元格背景
+                        cellFixed: '#F0F7F9',    // 固定单元格背景
+                        highlight: '#FFF8E1',    // 柔和的高亮颜色
+                        selected: '#E8F4F8'      // 选中单元格
+                    },
+                    fontFamily: {
+                        magic: ['Garamond', 'Georgia', 'Times New Roman', 'serif'],
+                        numbers: ['Palatino', 'Georgia', 'serif']
+                    },
+                    fontSize: {
+                        'xxs': '0.625rem',
+                        'xxl': '2rem',
+                        'xxxl': '2.5rem'
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        /* 所有原有样式保持不变，只更新颜色引用 */
+        @layer base {
+            body {
+                background: linear-gradient(135deg, #2C3E50 0%, #1A252F 100%);
+                min-height: 100vh;
+                touch-action: manipulation;
+                -webkit-tap-highlight-color: transparent;
+            }
+        }
+        
+        @layer utilities {
+            .text-shadow {
+                text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+            }
+            .text-shadow-primary {
+                text-shadow: 0 0 5px rgba(124, 158, 178, 0.4);
+            }
+            .border-thick {
+                border-width: 3px !important;
+            }
+            .border-extra-thick {
+                border-width: 4px !important;
+            }
+            .cell-hover {
+                transition: all 0.2s ease;
+            }
+            .cell-hover:hover:not(.fixed-number) {
+                background-color: rgba(124, 158, 178, 0.15);
+                transform: scale(1.02);
+            }
+            .bounce-in {
+                animation: bounce-in 0.5s ease forwards;
+            }
+            @keyframes bounce-in {
+                0% { transform: scale(0.8); opacity: 0; }
+                70% { transform: scale(1.1); }
+                100% { transform: scale(1); opacity: 1; }
+            }
+            .pulse {
+                animation: pulse 2s infinite;
+            }
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.03); }
+                100% { transform: scale(1); }
+            }
+            .color-transition {
+                transition: color 0.5s ease;
+            }
+            .celebrate {
+                animation: celebrate 1s ease-in-out infinite alternate;
+            }
+            @keyframes celebrate {
+                0% { transform: translateY(0); }
+                100% { transform: translateY(-8px); }
+            }
+            .glow {
+                animation: glow 2s ease-in-out infinite alternate;
+            }
+            @keyframes glow {
+                from { box-shadow: 0 0 5px rgba(124, 158, 178, 0.4); }
+                to { box-shadow: 0 0 12px rgba(124, 158, 178, 0.6); }
+            }
+            .note-number {
+                font-size: 0.75rem !important;
+                line-height: 1.2 !important;
+                font-weight: 600 !important;
+            }
+            
+            /* 棋盘样式 */
+            #sudoku-board {
+                background-color: rgba(255, 255, 255, 0.98);
+                box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            }
+            
+            /* 控制面板 */
+            .control-panel {
+                background: linear-gradient(135deg, rgba(248, 244, 233, 0.98) 0%, rgba(168, 198, 217, 0.25) 100%);
+                backdrop-filter: blur(8px);
+                border: 3px solid rgba(124, 158, 178, 0.25);
+            }
+            
+            /* 单元格样式 */
+            .cell {
+                background-color: rgba(255, 255, 255, 1);
+                border-color: #D1D5DB !important;
+            }
+            
+            /* 固定数字样式 */
+            .fixed-cell {
+                background-color: rgba(240, 247, 249, 0.9);
+                font-weight: 700 !important;
+            }
+            
+            /* 错误和成功状态 */
+            .error-cell {
+                background-color: rgba(229, 115, 115, 0.15) !important;
+                border-color: #E57373 !important;
+                color: #B71C1C !important;
+            }
+            
+            .success-cell {
+                background-color: rgba(129, 199, 132, 0.15) !important;
+                border-color: #81C784 !important;
+                color: #1B5E20 !important;
+            }
+            
+            /* 选中单元格 */
+            .selected-cell {
+                background-color: rgba(232, 244, 248, 0.8) !important;
+                box-shadow: 0 0 0 3px rgba(124, 158, 178, 0.4) inset;
+                border-color: #7C9EB2 !important;
+            }
+            
+            /* 笔记数字样式 */
+            .note-cell {
+                background-color: rgba(248, 244, 233, 0.95);
+            }
+            
+            /* 高亮相同数字 */
+            .highlight-number {
+                background-color: rgba(255, 248, 225, 0.8) !important;
+                border-color: #D9BFA9 !important;
+            }
+            
+            /* 高亮同行同列 */
+            .highlight-row-col {
+                background-color: rgba(217, 191, 169, 0.15) !important;
+            }
+            
+            /* 移动端数字键盘 */
+            .number-key {
+                user-select: none;
+                -webkit-user-select: none;
+                min-height: 56px;
+                font-size: 1.5rem !important;
+                font-weight: 700 !important;
+            }
+            
+            /* 确保按钮在移动端可点击 */
+            .touch-button {
+                position: relative;
+                z-index: 10;
+                min-height: 44px;
+            }
+            
+            /* 九宫格粗边框样式 */
+            .block-border-right {
+                border-right-width: 4px !important;
+                border-right-color: #7C9EB2 !important;
+            }
+            
+            .block-border-bottom {
+                border-bottom-width: 4px !important;
+                border-bottom-color: #7C9EB2 !important;
+            }
+            
+            .block-border-left {
+                border-left-width: 4px !important;
+                border-left-color: #7C9EB2 !important;
+            }
+            
+            .block-border-top {
+                border-top-width: 4px !important;
+                border-top-color: #7C9EB2 !important;
+            }
+            
+            /* 移动端优化 */
+            @media (max-width: 640px) {
+                #sudoku-board {
+                    max-height: none !important;
+                    height: auto !important;
+                    aspect-ratio: 1 / 1 !important;
+                    margin-bottom: 10px !important;
+                }
+                
+                .board-container {
+                    padding: 2px !important;
+                    margin: 0 auto 10px auto !important;
+                    max-width: 98vw !important;
+                }
+                
+                .main-number {
+                    font-size: 1.75rem !important;
+                    font-weight: 700 !important;
+                }
+                
+                .cell {
+                    min-height: 50px !important;
+                }
+                
+                .note-number {
+                    font-size: 0.7rem !important;
+                }
+                
+                .control-panel {
+                    margin-top: 1rem;
+                    padding: 0.5rem !important;
+                    max-width: 280px !important;
+                    margin: 0 auto !important;
+                    font-size: 0.8rem !important;
+                }
+                
+                #sudoku-board {
+                    margin: 0 auto;
+                    width: 100%;
+                    max-width: 100vw;
+                    padding: 2px !important;
+                }
+                
+                .mobile-btn {
+                    padding: 10px 6px !important;
+                    font-size: 0.9rem !important;
+                    min-height: 46px;
+                }
+                
+                h1 {
+                    font-size: 2.2rem !important;
+                }
+                
+                .control-panel {
+                    width: 100%;
+                    margin: 0 auto;
+                }
+                
+                .control-panel h2 {
+                    font-size: 0.9rem !important;
+                    margin-bottom: 0.3rem !important;
+                }
+                
+                .control-panel .text-sm {
+                    font-size: 0.75rem !important;
+                }
+                
+                .control-panel button {
+                    padding: 0.3rem 0.4rem !important;
+                    font-size: 0.8rem !important;
+                    min-height: 38px !important;
+                }
+                
+                .control-panel > div {
+                    margin-bottom: 0.5rem !important;
+                }
+                
+                .control-panel .p-1\.5 {
+                    padding: 0.3rem !important;
+                }
+                
+                .grid-cols-3 .text-xs {
+                    font-size: 0.65rem !important;
+                }
+                
+                .text-xxs {
+                    font-size: 0.55rem !important;
+                    line-height: 1.2 !important;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .cell {
+                    min-height: 40px !important;
+                }
+                
+                .main-number {
+                    font-size: 1.2rem !important;
+                }
+                
+                .note-number {
+                    font-size: 0.55rem !important;
+                }
+                
+                .control-panel {
+                    max-width: 260px !important;
+                    padding: 0.4rem !important;
+                }
+                
+                .control-panel button {
+                    padding: 0.25rem 0.3rem !important;
+                    font-size: 0.75rem !important;
+                    min-height: 36px !important;
+                }
+                
+                .number-key {
+                    min-height: 48px !important;
+                    font-size: 1.2rem !important;
+                }
+                
+                .mobile-btn {
+                    padding: 6px 4px !important;
+                    font-size: 0.8rem !important;
+                    min-height: 42px !important;
+                }
+            }
+            
+            @media (max-width: 380px) {
+                .cell {
+                    min-height: 36px !important;
+                }
+                
+                .main-number {
+                    font-size: 1.1rem !important;
+                }
+                
+                .control-panel {
+                    max-width: 240px !important;
+                }
+                
+                .note-number {
+                    font-size: 0.5rem !important;
+                }
+                
+                .mobile-btn {
+                    padding: 4px 2px !important;
+                    font-size: 0.7rem !important;
+                    min-height: 38px !important;
+                }
+                
+                .number-key {
+                    min-height: 42px !important;
+                    font-size: 1.1rem !important;
+                }
+            }
+            
+            .board-container {
+                padding: 4px !important;
+                margin: 0 auto;
+            }
+        }
+    </style>
+</head>
+<body class="text-shadow min-h-screen font-magic relative overflow-x-hidden">
+    <!-- 背景装饰元素 -->
+    <div class="fixed inset-0 z-0 opacity-10 pointer-events-none">
+        <div class="absolute top-10 left-10 w-40 h-40 rounded-full border border-primary"></div>
+        <div class="absolute bottom-20 right-20 w-60 h-60 rounded-full border border-primary"></div>
+        <div class="absolute top-1/3 right-1/4 w-20 h-20 rounded-full border border-primary"></div>
+        <div class="absolute top-2/3 left-1/4 w-32 h-32 rounded-full border border-accent"></div>
+    </div>
+
+    <!-- 主容器 -->
+    <div class="container mx-auto px-1 sm:px-2 py-2 sm:py-4 relative z-10">
+        <!-- 标题区域 -->
+        <header class="text-center mb-3 md:mb-4 bounce-in">
+            <h1 class="text-[clamp(2rem,8vw,3rem)] font-bold text-primary text-shadow-primary mb-1">魔法数独</h1>
+            <div class="flex justify-center items-center space-x-3 mb-3">
+                <div class="text-parchment text-base sm:text-lg font-bold flex items-center">
+                    <i class="fa fa-clock-o mr-1"></i>
+                    <span id="timer-display" class="text-base">00:00:00</span>
+                    <button id="pause-timer" class="ml-1 text-parchment/70 hover:text-parchment transition-colors touch-button">
+                        <i class="fa fa-pause" id="pause-icon"></i>
+                    </button>
+                </div>
+                <div class="text-parchment text-sm sm:text-base flex items-center">
+                    <i class="fa fa-leaf mr-1"></i>
+                    <span id="puzzle-number" class="text-base">谜题 #1</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- 主要游戏区域 -->
+        <div class="flex flex-col lg:flex-row gap-3 sm:gap-4 items-center lg:items-start justify-center">
+            <!-- 数独棋盘 -->
+            <div class="relative w-full max-w-[98vw] sm:max-w-2xl mx-auto">
+                <div class="absolute -inset-2 sm:-inset-4 bg-primary/10 rounded-lg blur-xl opacity-50"></div>
+                <div class="relative bg-parchment/95 rounded-lg p-1 sm:p-2 md:p-4 shadow-2xl border-2 border-primary/50 board-container">
+                    <div id="sudoku-board" class="grid grid-cols-9 gap-0 w-full aspect-square rounded-lg overflow-hidden">
+                        <!-- 数独单元格将通过JavaScript动态生成 -->
+                    </div>
+                </div>
+                
+                <!-- 移动端数字键盘 -->
+                <div class="mt-3 sm:mt-4 mb-2 sm:mb-0">
+                    <div class="grid grid-cols-9 gap-1">
+                        <button data-number="1" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">1</button>
+                        <button data-number="2" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">2</button>
+                        <button data-number="3" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">3</button>
+                        <button data-number="4" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">4</button>
+                        <button data-number="5" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">5</button>
+                        <button data-number="6" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">6</button>
+                        <button data-number="7" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">7</button>
+                        <button data-number="8" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">8</button>
+                        <button data-number="9" class="number-key touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-2 sm:py-3 text-lg sm:text-xl rounded transition-all active:scale-95 flex items-center justify-center shadow">9</button>
+                    </div>
+                    
+                    <!-- 特殊功能按钮（移动端优化版） -->
+                    <div class="mt-1 grid grid-cols-5 gap-1">
+                        <button id="btn-notes-mode" class="mobile-btn touch-button bg-accent/20 hover:bg-accent/30 text-darkMagic font-bold py-2 text-xs sm:text-sm rounded transition-all active:scale-95 flex items-center justify-center gap-0.5 shadow">
+                            <i class="fa fa-pencil"></i><span>备注</span>
+                        </button>
+                        <button id="btn-delete-note" class="mobile-btn touch-button bg-accent/25 hover:bg-accent/35 text-darkMagic font-bold py-2 text-xs sm:text-sm rounded transition-all active:scale-95 flex items-center justify-center gap-0.5 shadow">
+                            <i class="fa fa-eraser"></i><span>删备</span>
+                        </button>
+                        <button id="btn-clear" class="mobile-btn touch-button bg-error/25 hover:bg-error/35 text-darkMagic font-bold py-2 text-xs sm:text-sm rounded transition-all active:scale-95 flex items-center justify-center gap-0.5 shadow">
+                            <i class="fa fa-times"></i><span>清除</span>
+                        </button>
+                        <button id="btn-fill-unique" class="mobile-btn touch-button bg-primary/25 hover:bg-primary/35 text-darkMagic font-bold py-2 text-xs sm:text-sm rounded transition-all active:scale-95 flex items-center justify-center gap-0.5 shadow">
+                            <i class="fa fa-magic"></i><span>填充</span>
+                        </button>
+                        <button id="btn-undo" class="mobile-btn touch-button bg-secondary/25 hover:bg-secondary/35 text-parchment font-bold py-2 text-xs sm:text-sm rounded transition-all active:scale-95 flex items-center justify-center gap-0.5 shadow">
+                            <i class="fa fa-undo"></i><span>撤销</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- 填充功能按钮（桌面端） -->
+                <div class="hidden sm:flex justify-center gap-2 mt-3">
+                    <button id="fill-toggle" class="touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic font-bold py-1 px-3 rounded text-sm transition-all transform hover:scale-105 active:scale-95 flex items-center gap-1 shadow">
+                        <i class="fa fa-list"></i> 填充备注
+                    </button>
+                    <button id="fill-unique" class="touch-button bg-primary/25 hover:bg-primary/35 text-darkMagic font-bold py-1 px-3 rounded text-sm transition-all transform hover:scale-105 active:scale-95 flex items-center gap-1 shadow">
+                        <i class="fa fa-magic"></i> 自动填充
+                    </button>
+                    <button id="update-notes" class="touch-button bg-accent/20 hover:bg-accent/30 text-darkMagic font-bold py-1 px-3 rounded text-sm transition-all transform hover:scale-105 active:scale-95 flex items-center gap-1 shadow">
+                        <i class="fa fa-refresh"></i> 更新备注
+                    </button>
+                    <button id="undo-desktop" class="touch-button bg-secondary/25 hover:bg-secondary/35 text-parchment font-bold py-1 px-3 rounded text-sm transition-all transform hover:scale-105 active:scale-95 flex items-center gap-1 shadow">
+                        <i class="fa fa-undo"></i> 撤销
+                    </button>
+                </div>
+            </div>
+
+            <!-- 控制面板（缩小版） -->
+            <div class="w-full lg:w-72 control-panel rounded-lg p-3 sm:p-4 shadow-xl border border-primary/50 bounce-in mt-1 sm:mt-0" style="animation-delay: 0.2s">
+                <h2 class="text-lg sm:text-xl font-bold text-darkMagic mb-2 text-center border-b border-primary/30 pb-1">游戏控制</h2>
+                
+                <!-- 难度选择 -->
+                <div class="mb-3 sm:mb-4">
+                    <label class="block text-shadow text-darkMagic mb-1 text-sm sm:text-base font-semibold">难度:</label>
+                    <div class="grid grid-cols-3 gap-1">
+                        <button id="hard" class="difficulty-btn touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic py-1.5 sm:py-2 px-1 text-xs sm:text-sm rounded transition-all active bg-primary/30 font-semibold">困难</button>
+                        <button id="expert" class="difficulty-btn touch-button bg-primary/20 hover:bg-primary/30 text-darkMagic py-1.5 sm:py-2 px-1 text-xs sm:text-sm rounded transition-all font-semibold">专家</button>
+                        <button id="master" class="difficulty-btn touch-button bg-primary/25 hover:bg-primary/35 text-darkMagic py-1.5 sm:py-2 px-1 text-xs sm:text-sm rounded transition-all glow font-semibold">大师</button>
+                    </div>
+                    <div class="mt-1 text-xs text-darkMagic/70 text-center">
+                        每个难度等级有100个谜题
+                    </div>
+                </div>
+                
+                <!-- 游戏状态 -->
+                <div class="mb-3 sm:mb-4 p-1.5 sm:p-2 bg-darkMagic/5 rounded border border-primary/30">
+                    <h3 class="text-darkMagic font-semibold mb-0.5 text-sm">游戏状态</h3>
+                    <p id="status-message" class="text-darkMagic/80 text-xs sm:text-sm font-medium">请开始填充数字</p>
+                    <div class="mt-1 text-xs space-y-0.5">
+                        <div class="flex justify-between"><span>已用时:</span> <span id="current-time" class="font-semibold">00:00</span></div>
+                        <div class="flex justify-between"><span>当前谜题:</span> <span id="current-puzzle" class="font-semibold">1/100</span></div>
+                        <div id="timer-status" class="text-primary font-semibold text-center text-xs">计时器运行中</div>
+                    </div>
+                </div>
+                
+                <!-- 功能按钮 -->
+                <div class="flex flex-col gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+                    <button id="new-game" class="touch-button bg-primary hover:bg-primaryLight text-darkMagic font-bold py-2 sm:py-2 px-2 rounded transition-all transform hover:scale-105 flex items-center justify-center gap-1 active:scale-95 shadow text-sm">
+                        <i class="fa fa-refresh"></i> 新谜题
+                    </button>
+                    <button id="check-solution" class="touch-button bg-secondary hover:bg-primary text-parchment font-bold py-2 sm:py-2 px-2 rounded transition-all transform hover:scale-105 flex items-center justify-center gap-1 active:scale-95 shadow text-sm">
+                        <i class="fa fa-check"></i> 检查答案
+                    </button>
+                    <button id="show-rules" class="touch-button bg-transparent border border-primary/50 hover:border-primary text-darkMagic hover:text-primary font-bold py-2 sm:py-2 px-2 rounded transition-all flex items-center justify-center gap-1 active:scale-95 shadow text-sm">
+                        <i class="fa fa-info-circle"></i> 数独规则
+                    </button>
+                </div>
+                
+                <!-- 计时器统计 -->
+                <div class="p-1.5 sm:p-2 bg-darkMagic/5 rounded border border-primary/30">
+                    <h3 class="text-darkMagic font-semibold mb-1 text-sm">最佳成绩</h3>
+                    <div class="grid grid-cols-3 gap-1 text-xs">
+                        <div class="text-center p-0.5">
+                            <div class="font-semibold text-primary text-xs">困难</div>
+                            <div id="best-hard" class="text-darkMagic/70 font-medium text-xs">--:--</div>
+                        </div>
+                        <div class="text-center p-0.5">
+                            <div class="font-semibold text-primary text-xs">专家</div>
+                            <div id="best-expert" class="text-darkMagic/70 font-medium text-xs">--:--</div>
+                        </div>
+                        <div class="text-center p-0.5">
+                            <div class="font-semibold text-primary text-xs">大师</div>
+                            <div id="best-master" class="text-darkMagic/70 font-medium text-xs">--:--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- 移动端操作提示 -->
+                <div class="mt-2 p-1.5 bg-primary/5 rounded border border-primary/20 text-xxs text-darkMagic/70">
+                    <p class="font-semibold mb-0.5 text-darkMagic text-xs">操作提示：</p>
+                    <p class="text-xxs">• 点击数字键输入</p>
+                    <p class="text-xxs">• "备注"模式可添加备注</p>
+                    <p class="text-xxs">• "撤消"可回退上一步</p>
+                    <p class="text-xxs">• 备注剩一个时自动填入</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 页脚 -->
+        <footer class="mt-4 sm:mt-6 text-center text-parchment/60 text-xs">
+            <p>魔法数独 © 2023 - 用智慧解开自然谜题</p>
+        </footer>
+    </div>
+
+    <!-- 规则说明模态框 -->
+    <div id="rules-modal" class="fixed inset-0 bg-darkMagic/90 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
+        <div class="bg-parchment rounded-lg p-4 sm:p-6 max-w-md w-full mx-2 sm:mx-4 transform scale-95 transition-transform duration-300 shadow-2xl">
+            <div class="flex justify-between items-center mb-3">
+                <h2 class="text-xl sm:text-2xl font-bold text-darkMagic">数独规则</h2>
+                <button id="close-rules" class="text-darkMagic/70 hover:text-darkMagic text-2xl transition-colors touch-button">
+                    <i class="fa fa-times"></i>
+                </button>
+            </div>
+            <div class="text-darkMagic space-y-2 text-sm sm:text-base">
+                <p>数独是一个9x9的数字谜题，目标是在每个单元格中填入1-9的数字，同时满足以下规则：</p>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li>每一行必须包含1-9的所有数字，不能重复</li>
+                    <li>每一列必须包含1-9的所有数字，不能重复</li>
+                    <li>每个3x3的小九宫格必须包含1-9的所有数字，不能重复</li>
+                </ul>
+                <p><strong>移动端操作说明：</strong></p>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li><strong>普通模式：</strong>直接点击数字键输入主数字</li>
+                    <li><strong>备注模式：</strong>点击"备注"按钮后，点击数字键添加备注</li>
+                    <li><strong>删除备注：</strong>点击"删备"按钮后，点击数字键删除备注</li>
+                    <li><strong>自动转换：</strong>当备注只剩一个数字时会自动填入</li>
+                    <li><strong>清除：</strong>点击"清除"按钮删除当前单元格内容</li>
+                    <li><strong>撤销：</strong>点击"撤销"按钮回退上一步操作</li>
+                </ul>
+                <p><strong>难度等级：</strong></p>
+                <ul class="list-disc pl-4 space-y-1">
+                    <li><strong>困难：</strong>55个数字被移除</li>
+                    <li><strong>专家：</strong>65个数字被移除</li>
+                    <li><strong>大师：</strong>70个数字被移除（最困难）</li>
+                </ul>
+            </div>
+            <button id="close-rules-btn" class="touch-button mt-4 w-full bg-primary hover:bg-primaryLight text-darkMagic font-bold py-2 px-4 rounded-lg transition-all shadow">
+                明白了
+            </button>
+        </div>
+    </div>
+
+    <!-- 完成庆祝模态框 -->
+    <div id="celebration-modal" class="fixed inset-0 bg-darkMagic/90 z-50 flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-500">
+        <div class="bg-parchment rounded-lg p-4 sm:p-8 max-w-md w-full mx-2 sm:mx-4 transform scale-95 transition-transform duration-500 text-center shadow-2xl">
+            <div class="mb-3 sm:mb-4 text-primary text-4xl sm:text-5xl celebrate">
+                <i class="fa fa-trophy"></i>
+            </div>
+            <h2 class="text-2xl sm:text-3xl font-bold text-darkMagic mb-2">恭喜你！</h2>
+            <p id="completion-difficulty" class="text-lg sm:text-xl text-darkMagic mb-2">成功完成大师级谜题！</p>
+            <p id="completion-puzzle" class="text-darkMagic/80 mb-3 sm:mb-4">谜题 #<span id="completed-puzzle-num">1</span></p>
+            <p id="completion-time" class="text-darkMagic/80 mb-4 sm:mb-6">用时: <span id="time-value">00:00</span></p>
+            <div id="best-time-message" class="text-primary font-bold mb-4 sm:mb-6 text-base sm:text-lg pulse" style="display: none;">
+                刷新了最佳成绩！
+            </div>
+            <button id="new-game-after-win" class="touch-button w-full bg-primary hover:bg-primaryLight text-darkMagic font-bold py-2 sm:py-3 px-4 rounded-lg transition-all transform hover:scale-105 mb-2 sm:mb-3 shadow">
+                下一个谜题
+            </button>
+            <button id="close-celebration" class="touch-button w-full bg-transparent border border-primary/50 hover:border-primary text-darkMagic hover:text-primary py-2 px-4 rounded-lg transition-all">
+                关闭
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ============================================
+        // 唯一解验证器
+        // ============================================
+        class UniqueSolutionValidator {
+            constructor() {
+                this.solutions = 0;
+                this.limit = 2;
+            }
+            
+            hasUniqueSolution(board) {
+                this.solutions = 0;
+                const copy = board.map(row => [...row]);
+                return this.solve(copy, 0, 0) === 1;
+            }
+            
+            solve(board, row, col) {
+                if (row === 9) {
+                    this.solutions++;
+                    return this.solutions >= this.limit ? this.solutions : 0;
+                }
+                
+                if (this.solutions >= this.limit) return this.solutions;
+                
+                const nextRow = col === 8 ? row + 1 : row;
+                const nextCol = col === 8 ? 0 : col + 1;
+                
+                if (board[row][col] !== 0) {
+                    return this.solve(board, nextRow, nextCol);
+                }
+                
+                const candidates = this.getCandidates(board, row, col);
+                
+                for (const num of candidates) {
+                    board[row][col] = num;
+                    
+                    this.solve(board, nextRow, nextCol);
+                    
+                    if (this.solutions >= this.limit) {
+                        board[row][col] = 0;
+                        return this.solutions;
+                    }
+                    
+                    board[row][col] = 0;
+                }
+                
+                return this.solutions;
+            }
+            
+            getCandidates(board, row, col) {
+                const used = new Set();
+                
+                for (let i = 0; i < 9; i++) {
+                    used.add(board[row][i]);
+                }
+                
+                for (let i = 0; i < 9; i++) {
+                    used.add(board[i][col]);
+                }
+                
+                const startRow = Math.floor(row / 3) * 3;
+                const startCol = Math.floor(col / 3) * 3;
+                
+                for (let i = 0; i < 3; i++) {
+                    for (let j = 0; j < 3; j++) {
+                        used.add(board[startRow + i][startCol + j]);
+                    }
+                }
+                
+                const candidates = [];
+                for (let num = 1; num <= 9; num++) {
+                    if (!used.has(num)) {
+                        candidates.push(num);
+                    }
+                }
+                
+                for (let i = candidates.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+                }
+                
+                return candidates;
+            }
+        }
+        
+        // ============================================
+        // 预定义一些基本谜题作为后备
+        // ============================================
+        const BASIC_PUZZLES = {
+            hard: [
+                {
+                    board: [
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,3,6,0,0,0,0,0],
+                        [0,7,0,0,9,0,2,0,0],
+                        [0,5,0,0,0,7,0,0,0],
+                        [0,0,0,0,4,5,7,0,0],
+                        [0,0,0,1,0,0,0,3,0],
+                        [0,0,1,0,0,0,0,6,8],
+                        [0,0,8,5,0,0,0,1,0],
+                        [0,9,0,0,0,0,4,0,0]
+                    ],
+                    solution: [
+                        [8,1,2,7,5,3,6,4,9],
+                        [9,4,3,6,8,2,1,7,5],
+                        [6,7,5,4,9,1,2,8,3],
+                        [1,5,4,2,3,7,8,9,6],
+                        [3,6,9,8,4,5,7,2,1],
+                        [2,8,7,1,6,9,5,3,4],
+                        [5,2,1,9,7,4,3,6,8],
+                        [4,3,8,5,2,6,9,1,7],
+                        [7,9,6,3,1,8,4,5,2]
+                    ]
+                }
+            ],
+            expert: [
+                {
+                    board: [
+                        [0,0,0,0,0,0,0,0,0],
+                        [0,0,0,0,0,3,0,8,5],
+                        [0,0,1,0,2,0,0,0,0],
+                        [0,0,0,5,0,7,0,0,0],
+                        [0,0,4,0,0,0,1,0,0],
+                        [0,9,0,0,0,0,0,0,0],
+                        [5,0,0,0,0,0,0,7,3],
+                        [0,0,2,0,1,0,0,0,0],
+                        [0,0,0,0,4,0,0,0,9]
+                    ],
+                    solution: [
+                        [9,8,7,6,5,4,3,2,1],
+                        [2,4,6,1,7,3,9,8,5],
+                        [3,5,1,9,2,8,7,4,6],
+                        [1,2,8,5,3,7,6,9,4],
+                        [6,3,4,8,9,2,1,5,7],
+                        [7,9,5,4,6,1,8,3,2],
+                        [5,1,9,2,8,6,4,7,3],
+                        [4,7,2,3,1,9,5,6,8],
+                        [8,6,3,7,4,5,2,1,9]
+                    ]
+                }
+            ],
+            master: [
+                {
+                    board: [
+                        [8,0,0,0,0,0,0,0,0],
+                        [0,0,3,6,0,0,0,0,0],
+                        [0,7,0,0,9,0,2,0,0],
+                        [0,5,0,0,0,7,0,0,0],
+                        [0,0,0,0,4,5,7,0,0],
+                        [0,0,0,1,0,0,0,3,0],
+                        [0,0,1,0,0,0,0,6,8],
+                        [0,0,8,5,0,0,0,1,0],
+                        [0,9,0,0,0,0,4,0,0]
+                    ],
+                    solution: [
+                        [8,1,2,7,5,3,6,4,9],
+                        [9,4,3,6,8,2,1,7,5],
+                        [6,7,5,4,9,1,2,8,3],
+                        [1,5,4,2,3,7,8,9,6],
+                        [3,6,9,8,4,5,7,2,1],
+                        [2,8,7,1,6,9,5,3,4],
+                        [5,2,1,9,7,4,3,6,8],
+                        [4,3,8,5,2,6,9,1,7],
+                        [7,9,6,3,1,8,4,5,2]
+                    ]
+                }
+            ]
+        };
+
+        // ============================================
+        // 创建解决方案函数
+        // ============================================
+        function createSolution() {
+            const board = Array(9).fill().map(() => Array(9).fill(0));
+            
+            function fillBoard(row, col) {
+                if (row === 9) return true;
+                
+                const nextRow = col === 8 ? row + 1 : row;
+                const nextCol = col === 8 ? 0 : col + 1;
+                
+                const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+                for (let i = numbers.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [numbers[i], numbers[j]] = [numbers[j], numbers[i]];
+                }
+                
+                for (const num of numbers) {
+                    if (isValidMove(board, row, col, num)) {
+                        board[row][col] = num;
+                        if (fillBoard(nextRow, nextCol)) {
+                            return true;
+                        }
+                        board[row][col] = 0;
+                    }
+                }
+                
+                return false;
+            }
+            
+            fillBoard(0, 0);
+            return board;
+        }
+
+        function isValidMove(board, row, col, num) {
+            // 检查行
+            for (let i = 0; i < 9; i++) {
+                if (board[row][i] === num) return false;
+            }
+            
+            // 检查列
+            for (let i = 0; i < 9; i++) {
+                if (board[i][col] === num) return false;
+            }
+            
+            // 检查3x3区块
+            const blockRow = Math.floor(row / 3) * 3;
+            const blockCol = Math.floor(col / 3) * 3;
+            
+            for (let i = 0; i < 3; i++) {
+                for (let j = 0; j < 3; j++) {
+                    if (board[blockRow + i][blockCol + j] === num) return false;
+                }
+            }
+            
+            return true;
+        }
+
+        // 创建挖洞谜题
+        function createPuzzleFromSolution(solution, difficulty) {
+            const puzzle = solution.map(row => [...row]);
+            let cellsToRemove;
+            
+            // 根据难度设置挖洞数量
+            switch(difficulty) {
+                case 'hard': cellsToRemove = 55; break;
+                case 'expert': cellsToRemove = 65; break;
+                case 'master': cellsToRemove = 70; break;
+                default: cellsToRemove = 55;
+            }
+            
+            // 生成随机位置
+            const positions = [];
+            for (let i = 0; i < 9; i++) {
+                for (let j = 0; j < 9; j++) {
+                    positions.push({row: i, col: j});
+                }
+            }
+            
+            // 洗牌
+            for (let i = positions.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [positions[i], positions[j]] = [positions[j], positions[i]];
+            }
+            
+            // 挖洞算法，确保唯一解
+            const validator = new UniqueSolutionValidator();
+            let removed = 0;
+            
+            for (let i = 0; i < positions.length && removed < cellsToRemove; i++) {
+                const {row, col} = positions[i];
+                
+                // 临时移除
+                const temp = puzzle[row][col];
+                puzzle[row][col] = 0;
+                
+                // 检查是否仍然有唯一解
+                if (validator.hasUniqueSolution(puzzle.map(row => [...row]))) {
+                    removed++;
+                } else {
+                    // 恢复数字
+                    puzzle[row][col] = temp;
+                }
+            }
+            
+            return puzzle;
+        }
+
+        // 获取随机谜题
+        function getRandomPuzzle(difficulty) {
+            // 首先尝试使用基础谜题
+            const basicPuzzles = BASIC_PUZZLES[difficulty];
+            if (basicPuzzles && basicPuzzles.length > 0) {
+                const randomIndex = Math.floor(Math.random() * basicPuzzles.length);
+                return {
+                    board: basicPuzzles[randomIndex].board.map(row => [...row]),
+                    solution: basicPuzzles[randomIndex].solution.map(row => [...row])
+                };
+            }
+            
+            // 如果没有基础谜题，动态生成一个
+            try {
+                const solution = createSolution();
+                const puzzle = createPuzzleFromSolution(solution, difficulty);
+                
+                // 验证唯一解
+                const validator = new UniqueSolutionValidator();
+                if (validator.hasUniqueSolution(puzzle.map(row => [...row]))) {
+                    return {
+                        board: puzzle,
+                        solution: solution
+                    };
+                }
+            } catch (error) {
+                console.error('生成谜题时出错:', error);
+            }
+            
+            // 如果都失败，返回一个简单的备份谜题
+            return {
+                board: [
+                    [0,0,0,0,0,0,0,0,0],
+                    [0,0,3,6,0,0,0,0,0],
+                    [0,7,0,0,9,0,2,0,0],
+                    [0,5,0,0,0,7,0,0,0],
+                    [0,0,0,0,4,5,7,0,0],
+                    [0,0,0,1,0,0,0,3,0],
+                    [0,0,1,0,0,0,0,6,8],
+                    [0,0,8,5,0,0,0,1,0],
+                    [0,9,0,0,0,0,4,0,0]
+                ],
+                solution: [
+                    [8,1,2,7,5,3,6,4,9],
+                    [9,4,3,6,8,2,1,7,5],
+                    [6,7,5,4,9,1,2,8,3],
+                    [1,5,4,2,3,7,8,9,6],
+                    [3,6,9,8,4,5,7,2,1],
+                    [2,8,7,1,6,9,5,3,4],
+                    [5,2,1,9,7,4,3,6,8],
+                    [4,3,8,5,2,6,9,1,7],
+                    [7,9,6,3,1,8,4,5,2]
+                ]
+            };
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            // 游戏状态变量
+            let Sudoku = {
+                board: [],
+                solution: [],
+                original: [],
+                notes: Array(9).fill().map(() => Array(9).fill().map(() => new Set())),
+                selectedCell: null,
+                difficulty: 'hard',
+                gameStarted: false,
+                startTime: null,
+                timerInterval: null,
+                elapsedTime: 0,
+                puzzleIndex: 1,
+                timerPaused: false,
+                bestTimes: {
+                    hard: localStorage.getItem('sudoku_best_hard') ? parseInt(localStorage.getItem('sudoku_best_hard')) : null,
+                    expert: localStorage.getItem('sudoku_best_expert') ? parseInt(localStorage.getItem('sudoku_best_expert')) : null,
+                    master: localStorage.getItem('sudoku_best_master') ? parseInt(localStorage.getItem('sudoku_best_master')) : null
+                },
+                highlightNumber: null,
+                inputMode: 'normal',
+                undoStack: [],
+                undoLimit: 50,
+                usedPuzzleIndices: new Set() // 跟踪已使用的谜题索引
+            };
+
+            // DOM元素
+            const boardElement = document.getElementById('sudoku-board');
+            const statusMessage = document.getElementById('status-message');
+            const newGameButton = document.getElementById('new-game');
+            const checkSolutionButton = document.getElementById('check-solution');
+            const difficultyButtons = document.querySelectorAll('.difficulty-btn');
+            const rulesModal = document.getElementById('rules-modal');
+            const showRulesButton = document.getElementById('show-rules');
+            const closeRulesButton = document.getElementById('close-rules');
+            const closeRulesBtn = document.getElementById('close-rules-btn');
+            const celebrationModal = document.getElementById('celebration-modal');
+            const closeCelebrationButton = document.getElementById('close-celebration');
+            const newGameAfterWinButton = document.getElementById('new-game-after-win');
+            const timeValueElement = document.getElementById('time-value');
+            const timerDisplay = document.getElementById('timer-display');
+            const currentTimeDisplay = document.getElementById('current-time');
+            const currentPuzzleDisplay = document.getElementById('current-puzzle');
+            const puzzleNumberDisplay = document.getElementById('puzzle-number');
+            const completedPuzzleNumDisplay = document.getElementById('completed-puzzle-num');
+            const completionDifficultyDisplay = document.getElementById('completion-difficulty');
+            const bestTimeMessage = document.getElementById('best-time-message');
+            const bestHardDisplay = document.getElementById('best-hard');
+            const bestExpertDisplay = document.getElementById('best-expert');
+            const bestMasterDisplay = document.getElementById('best-master');
+            const pauseTimerButton = document.getElementById('pause-timer');
+            const pauseIcon = document.getElementById('pause-icon');
+            const timerStatus = document.getElementById('timer-status');
+            const fillToggleButton = document.getElementById('fill-toggle');
+            const fillUniqueButton = document.getElementById('fill-unique');
+            const updateNotesButton = document.getElementById('update-notes');
+            const btnNotesMode = document.getElementById('btn-notes-mode');
+            const btnDeleteNote = document.getElementById('btn-delete-note');
+            const btnClear = document.getElementById('btn-clear');
+            const btnFillUnique = document.getElementById('btn-fill-unique');
+            const btnUndo = document.getElementById('btn-undo');
+            const btnUndoDesktop = document.getElementById('undo-desktop');
+            const numberKeys = document.querySelectorAll('.number-key');
+
+            function updateBestTimesDisplay() {
+                bestHardDisplay.textContent = Sudoku.bestTimes.hard ? formatTime(Sudoku.bestTimes.hard) : '--:--';
+                bestExpertDisplay.textContent = Sudoku.bestTimes.expert ? formatTime(Sudoku.bestTimes.expert) : '--:--';
+                bestMasterDisplay.textContent = Sudoku.bestTimes.master ? formatTime(Sudoku.bestTimes.master) : '--:--';
+            }
+
+            function updateInputModeDisplay() {
+                btnNotesMode.classList.remove('bg-primary/40', 'text-primary');
+                btnDeleteNote.classList.remove('bg-primary/40', 'text-primary');
+                
+                switch (Sudoku.inputMode) {
+                    case 'notes':
+                        btnNotesMode.classList.add('bg-primary/40', 'text-primary');
+                        statusMessage.textContent = '备注模式：点击数字添加备注';
+                        break;
+                    case 'delete-notes':
+                        btnDeleteNote.classList.add('bg-primary/40', 'text-primary');
+                        statusMessage.textContent = '删除备注模式：点击数字删除备注';
+                        break;
+                    default:
+                        statusMessage.textContent = '普通模式：点击数字输入';
+                        break;
+                }
+            }
+
+            function saveToUndoStack() {
+                if (!Sudoku.gameStarted) return;
+                
+                const state = {
+                    board: JSON.parse(JSON.stringify(Sudoku.board)),
+                    notes: JSON.parse(JSON.stringify(Array.from(Sudoku.notes, row => 
+                        Array.from(row, cell => Array.from(cell))))
+                    ),
+                    selectedCell: Sudoku.selectedCell ? {...Sudoku.selectedCell} : null
+                };
+                
+                Sudoku.undoStack.push(state);
+                
+                if (Sudoku.undoStack.length > Sudoku.undoLimit) {
+                    Sudoku.undoStack.shift();
+                }
+            }
+
+            function undoLastAction() {
+                if (Sudoku.undoStack.length === 0) {
+                    statusMessage.textContent = '没有可撤销的操作';
+                    return;
+                }
+                
+                const lastState = Sudoku.undoStack.pop();
+                
+                Sudoku.board = lastState.board;
+                
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        Sudoku.notes[row][col] = new Set(lastState.notes[row][col]);
+                    }
+                }
+                
+                Sudoku.selectedCell = lastState.selectedCell;
+                
+                updateBoardUI();
+                calculateAllNotes();
+                
+                statusMessage.textContent = `已撤销上一步操作，剩余撤销次数: ${Sudoku.undoStack.length}`;
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+            }
+
+            function initializeBoard() {
+                boardElement.innerHTML = '';
+                
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const cell = document.createElement('div');
+                        cell.classList.add('cell', 'cell-hover', 'relative', 'flex', 'items-center', 'justify-center', 'font-numbers', 'text-2xl', 'sm:text-3xl', 'md:text-4xl', 'cursor-pointer', 'border', 'transition-all', 'active:bg-primary/30', 'aspect-square');
+                        
+                        if (col % 3 === 2 && col !== 8) {
+                            cell.classList.add('border-r', 'block-border-right');
+                        }
+                        
+                        if (row % 3 === 2 && row !== 8) {
+                            cell.classList.add('border-b', 'block-border-bottom');
+                        }
+                        
+                        if (row === 0) {
+                            cell.classList.add('border-t', 'border-t-2', 'border-t-primary');
+                        }
+                        if (col === 0) {
+                            cell.classList.add('border-l', 'border-l-2', 'border-l-primary');
+                        }
+                        
+                        if (row === 8) {
+                            cell.classList.add('border-b', 'border-b-2', 'border-b-primary');
+                        }
+                        if (col === 8) {
+                            cell.classList.add('border-r', 'border-r-2', 'border-r-primary');
+                        }
+                        
+                        cell.dataset.row = row;
+                        cell.dataset.col = col;
+                        
+                        cell.addEventListener('touchstart', (e) => {
+                            e.preventDefault();
+                            selectCell(row, col);
+                        });
+                        
+                        cell.addEventListener('click', () => selectCell(row, col));
+                        boardElement.appendChild(cell);
+                    }
+                }
+            }
+
+            function selectCell(row, col) {
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                if (Sudoku.selectedCell) {
+                    const prevCell = getCellElement(Sudoku.selectedCell.row, Sudoku.selectedCell.col);
+                    prevCell.classList.remove('selected-cell', 'highlight-row-col');
+                    clearRowColHighlight();
+                }
+                
+                Sudoku.selectedCell = { row, col };
+                const cell = getCellElement(row, col);
+                cell.classList.add('selected-cell');
+                
+                highlightRowCol(row, col);
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+                
+                if (!Sudoku.gameStarted) {
+                    startGame();
+                }
+                
+                updateInputModeDisplay();
+            }
+
+            function highlightRowCol(row, col) {
+                for (let c = 0; c < 9; c++) {
+                    if (c !== col) {
+                        const cell = getCellElement(row, c);
+                        cell.classList.add('highlight-row-col');
+                    }
+                }
+                
+                for (let r = 0; r < 9; r++) {
+                    if (r !== row) {
+                        const cell = getCellElement(r, col);
+                        cell.classList.add('highlight-row-col');
+                    }
+                }
+                
+                const blockRow = Math.floor(row / 3) * 3;
+                const blockCol = Math.floor(col / 3) * 3;
+                
+                for (let r = blockRow; r < blockRow + 3; r++) {
+                    for (let c = blockCol; c < blockCol + 3; c++) {
+                        if (r !== row || c !== col) {
+                            const cell = getCellElement(r, c);
+                            cell.classList.add('highlight-row-col');
+                        }
+                    }
+                }
+            }
+
+            function clearRowColHighlight() {
+                const cells = document.querySelectorAll('.highlight-row-col');
+                cells.forEach(cell => {
+                    cell.classList.remove('highlight-row-col');
+                });
+            }
+
+            function getCellElement(row, col) {
+                return boardElement.querySelector(`[data-row="${row}"][data-col="${col}"]`);
+            }
+
+            function generateSudoku(difficulty) {
+                console.log(`生成${difficulty}难度谜题`);
+                
+                // 获取随机谜题
+                const puzzle = getRandomPuzzle(difficulty);
+                
+                Sudoku.solution = puzzle.solution;
+                Sudoku.original = puzzle.board;
+                Sudoku.board = JSON.parse(JSON.stringify(puzzle.board));
+                Sudoku.notes = Array(9).fill().map(() => Array(9).fill().map(() => new Set()));
+                
+                // 清空撤销栈
+                Sudoku.undoStack = [];
+                
+                // 更新UI
+                updateBoardUI();
+                updatePuzzleDisplay();
+                calculateAllNotes();
+                Sudoku.inputMode = 'normal';
+                updateInputModeDisplay();
+                
+                console.log(`已加载新的${difficulty}难度谜题`);
+            }
+
+            function updateBoardUI() {
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const cell = getCellElement(row, col);
+                        const value = Sudoku.board[row][col];
+                        const isOriginal = Sudoku.original[row][col] !== 0;
+                        
+                        cell.innerHTML = '';
+                        cell.classList.remove('error-cell', 'success-cell', 'selected-cell', 'fixed-cell', 'text-darkMagic', 'text-primary');
+                        
+                        if (isOriginal) {
+                            cell.classList.add('fixed-cell', 'font-bold');
+                        }
+                        
+                        if (value !== 0) {
+                            const mainNumberEl = document.createElement('div');
+                            mainNumberEl.classList.add('main-number', 'z-10', 'absolute', 'inset-0', 'flex', 'items-center', 'justify-center', 'font-bold', 'text-2xl', 'sm:text-3xl', 'md:text-4xl');
+                            mainNumberEl.textContent = value;
+                            
+                            if (isOriginal) {
+                                mainNumberEl.classList.add('text-darkMagic');
+                                mainNumberEl.style.fontWeight = '700';
+                            } else {
+                                mainNumberEl.classList.add('text-primary', 'text-shadow-primary');
+                                mainNumberEl.style.fontWeight = '600';
+                            }
+                            
+                            cell.appendChild(mainNumberEl);
+                        } else {
+                            displayNotesInCell(row, col);
+                        }
+                    }
+                }
+                
+                if (Sudoku.selectedCell) {
+                    const { row, col } = Sudoku.selectedCell;
+                    const cell = getCellElement(row, col);
+                    cell.classList.add('selected-cell');
+                    highlightRowCol(row, col);
+                }
+                
+                if (Sudoku.highlightNumber) {
+                    highlightSameNumber(Sudoku.highlightNumber);
+                }
+            }
+
+            function displayNotesInCell(row, col) {
+                const cell = getCellElement(row, col);
+                const notes = Sudoku.notes[row][col];
+                
+                if (notes.size === 0) return;
+                
+                const notesContainer = document.createElement('div');
+                notesContainer.classList.add('notes-container', 'absolute', 'inset-0', 'grid', 'grid-cols-3', 'gap-0', 'p-0.5', 'sm:p-1');
+                
+                for (let num = 1; num <= 9; num++) {
+                    const noteEl = document.createElement('div');
+                    noteEl.classList.add('note-number', 'flex', 'items-center', 'justify-center', 'text-xs', 'sm:text-xs', 'font-bold');
+                    
+                    if (notes.has(num)) {
+                        noteEl.textContent = num;
+                        noteEl.classList.add('text-primary');
+                        noteEl.style.fontWeight = '600';
+                    } else {
+                        noteEl.textContent = '';
+                    }
+                    
+                    notesContainer.appendChild(noteEl);
+                }
+                
+                cell.appendChild(notesContainer);
+            }
+
+            function highlightSameNumber(num) {
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (Sudoku.board[row][col] === num) {
+                            const cell = getCellElement(row, col);
+                            cell.classList.add('highlight-number');
+                        }
+                    }
+                }
+            }
+
+            function clearNumberHighlight() {
+                const cells = document.querySelectorAll('.highlight-number');
+                cells.forEach(cell => {
+                    cell.classList.remove('highlight-number');
+                });
+                Sudoku.highlightNumber = null;
+            }
+
+            function calculateNotesForCell(row, col) {
+                if (Sudoku.board[row][col] !== 0) {
+                    Sudoku.notes[row][col].clear();
+                    return;
+                }
+                
+                const notes = new Set();
+                
+                for (let num = 1; num <= 9; num++) {
+                    if (isValidMove(Sudoku.board, row, col, num)) {
+                        notes.add(num);
+                    }
+                }
+                
+                Sudoku.notes[row][col] = notes;
+            }
+
+            function calculateAllNotes() {
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        calculateNotesForCell(row, col);
+                    }
+                }
+                updateBoardUI();
+                statusMessage.textContent = '已重新计算所有备注';
+            }
+
+            function updateRelatedNotes(row, col, num) {
+                for (let c = 0; c < 9; c++) {
+                    if (c !== col && Sudoku.board[row][c] === 0) {
+                        Sudoku.notes[row][c].delete(num);
+                    }
+                }
+                
+                for (let r = 0; r < 9; r++) {
+                    if (r !== row && Sudoku.board[r][col] === 0) {
+                        Sudoku.notes[r][col].delete(num);
+                    }
+                }
+                
+                const blockRow = Math.floor(row / 3) * 3;
+                const blockCol = Math.floor(col / 3) * 3;
+                
+                for (let r = blockRow; r < blockRow + 3; r++) {
+                    for (let c = blockCol; c < blockCol + 3; c++) {
+                        if ((r !== row || c !== col) && Sudoku.board[r][c] === 0) {
+                            Sudoku.notes[r][c].delete(num);
+                        }
+                    }
+                }
+                
+                Sudoku.notes[row][col].clear();
+            }
+
+            function inputNumber(num, isNote = false) {
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                if (!Sudoku.selectedCell) {
+                    for (let r = 0; r < 9; r++) {
+                        for (let c = 0; c < 9; c++) {
+                            if (Sudoku.original[r][c] === 0 && Sudoku.board[r][c] === 0) {
+                                selectCell(r, c);
+                                break;
+                            }
+                        }
+                        if (Sudoku.selectedCell) break;
+                    }
+                    
+                    if (!Sudoku.selectedCell) return;
+                }
+                
+                const { row, col } = Sudoku.selectedCell;
+                
+                if (Sudoku.original[row][col] !== 0) return;
+                
+                saveToUndoStack();
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+                
+                if (isNote) {
+                    if (Sudoku.notes[row][col].has(num)) {
+                        Sudoku.notes[row][col].delete(num);
+                        
+                        if (Sudoku.notes[row][col].size === 1) {
+                            const lastNote = Array.from(Sudoku.notes[row][col])[0];
+                            Sudoku.board[row][col] = lastNote;
+                            Sudoku.notes[row][col].clear();
+                            updateRelatedNotes(row, col, lastNote);
+                            clearNumberHighlight();
+                            Sudoku.highlightNumber = lastNote;
+                            statusMessage.textContent = `已自动将备注 ${lastNote} 填入`;
+                            checkCompletion();
+                        } else {
+                            statusMessage.textContent = `已删除备注 ${num}`;
+                        }
+                    } else {
+                        Sudoku.notes[row][col].add(num);
+                        statusMessage.textContent = `已添加备注 ${num}`;
+                    }
+                } else {
+                    Sudoku.notes[row][col].clear();
+                    Sudoku.board[row][col] = num;
+                    updateRelatedNotes(row, col, num);
+                    clearNumberHighlight();
+                    Sudoku.highlightNumber = num;
+                    statusMessage.textContent = `已填入数字 ${num}`;
+                    checkCompletion();
+                }
+                
+                updateBoardUI();
+                
+                if (!isNote) {
+                    moveToNextCell();
+                }
+            }
+
+            function handleNumberInput(num) {
+                console.log('处理数字输入:', num, '当前模式:', Sudoku.inputMode);
+                
+                if (!Sudoku.gameStarted) {
+                    startGame();
+                }
+                
+                if (!Sudoku.selectedCell) {
+                    for (let r = 0; r < 9; r++) {
+                        for (let c = 0; c < 9; c++) {
+                            if (Sudoku.original[r][c] === 0 && Sudoku.board[r][c] === 0) {
+                                selectCell(r, c);
+                                break;
+                            }
+                        }
+                        if (Sudoku.selectedCell) break;
+                    }
+                    
+                    if (!Sudoku.selectedCell) {
+                        statusMessage.textContent = '没有可编辑的单元格';
+                        return;
+                    }
+                }
+                
+                const { row, col } = Sudoku.selectedCell;
+                
+                if (Sudoku.original[row][col] !== 0) {
+                    statusMessage.textContent = '不能修改初始数字';
+                    return;
+                }
+                
+                saveToUndoStack();
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+                
+                switch (Sudoku.inputMode) {
+                    case 'notes':
+                        if (Sudoku.notes[row][col].has(num)) {
+                            Sudoku.notes[row][col].delete(num);
+                            statusMessage.textContent = `已删除备注 ${num}`;
+                        } else {
+                            Sudoku.notes[row][col].add(num);
+                            statusMessage.textContent = `已添加备注 ${num}`;
+                        }
+                        
+                        if (Sudoku.notes[row][col].size === 1) {
+                            const lastNote = Array.from(Sudoku.notes[row][col])[0];
+                            Sudoku.board[row][col] = lastNote;
+                            Sudoku.notes[row][col].clear();
+                            updateRelatedNotes(row, col, lastNote);
+                            statusMessage.textContent = `已自动将备注 ${lastNote} 填入`;
+                            checkCompletion();
+                            moveToNextCell();
+                        }
+                        
+                        updateBoardUI();
+                        break;
+                        
+                    case 'delete-notes':
+                        if (Sudoku.board[row][col] !== 0) {
+                            Sudoku.board[row][col] = 0;
+                            calculateAllNotes();
+                            statusMessage.textContent = '已清除数字';
+                            updateBoardUI();
+                            break;
+                        }
+                        
+                        if (!Sudoku.notes[row][col].has(num)) {
+                            statusMessage.textContent = `备注中没有数字 ${num}`;
+                            break;
+                        }
+                        
+                        Sudoku.notes[row][col].delete(num);
+                        
+                        if (Sudoku.notes[row][col].size === 1) {
+                            const lastNote = Array.from(Sudoku.notes[row][col])[0];
+                            Sudoku.board[row][col] = lastNote;
+                            Sudoku.notes[row][col].clear();
+                            updateRelatedNotes(row, col, lastNote);
+                            clearNumberHighlight();
+                            Sudoku.highlightNumber = lastNote;
+                            statusMessage.textContent = `已删除备注并自动填入数字 ${lastNote}`;
+                            checkCompletion();
+                            moveToNextCell();
+                        } else {
+                            statusMessage.textContent = `已删除备注 ${num}`;
+                        }
+                        
+                        updateBoardUI();
+                        break;
+                        
+                    default:
+                        inputNumber(num, false);
+                        break;
+                }
+            }
+
+            function clearCell() {
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                if (!Sudoku.selectedCell) {
+                    statusMessage.textContent = '请先选择一个单元格';
+                    return;
+                }
+                
+                const { row, col } = Sudoku.selectedCell;
+                
+                if (Sudoku.original[row][col] !== 0) {
+                    statusMessage.textContent = '不能清除初始数字';
+                    return;
+                }
+                
+                saveToUndoStack();
+                
+                const oldNum = Sudoku.board[row][col];
+                const oldNotes = new Set(Sudoku.notes[row][col]);
+                
+                Sudoku.board[row][col] = 0;
+                clearNumberHighlight();
+                calculateAllNotes();
+                updateBoardUI();
+                statusMessage.textContent = oldNum ? '已清除数字' : '已清除备注';
+                Sudoku.inputMode = 'normal';
+                updateInputModeDisplay();
+            }
+
+            function fillAllPossibleNotes() {
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                if (!Sudoku.gameStarted) {
+                    startGame();
+                }
+                
+                saveToUndoStack();
+                calculateAllNotes();
+                statusMessage.textContent = '已填充所有可能数字的备注';
+            }
+
+            function fillUniqueSolutions() {
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                if (!Sudoku.gameStarted) {
+                    startGame();
+                }
+    
+                saveToUndoStack();
+                
+                let filledAny = false;
+                let filledCount = 0;
+                
+                calculateAllNotes();
+                
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (Sudoku.board[row][col] !== 0) continue;
+                        if (Sudoku.original[row][col] !== 0) continue;
+                        
+                        if (Sudoku.notes[row][col].size === 1) {
+                            const num = Array.from(Sudoku.notes[row][col])[0];
+                            Sudoku.board[row][col] = num;
+                            updateRelatedNotes(row, col, num);
+                            filledAny = true;
+                            filledCount++;
+                            
+                            const cell = getCellElement(row, col);
+                            cell.classList.add('bg-primary/30', 'pulse');
+                            setTimeout(() => {
+                                cell.classList.remove('bg-primary/30', 'pulse');
+                            }, 1000);
+                        }
+                    }
+                }
+                
+                updateBoardUI();
+                
+                if (filledAny) {
+                    statusMessage.textContent = `已填充 ${filledCount} 个唯一解的单元格`;
+                    checkCompletion();
+                } else {
+                    statusMessage.textContent = '当前没有唯一解的单元格';
+                }
+            }
+
+            function autoFillAllUnique() {
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                if (!Sudoku.gameStarted) {
+                    startGame();
+                }
+    
+                saveToUndoStack();
+                
+                let filledAny = false;
+                let filledCount = 0;
+                let maxIterations = 20;
+                
+                for (let iteration = 0; iteration < maxIterations; iteration++) {
+                    let filledInIteration = 0;
+                    
+                    calculateAllNotes();
+                    
+                    for (let row = 0; row < 9; row++) {
+                        for (let col = 0; col < 9; col++) {
+                            if (Sudoku.board[row][col] !== 0) continue;
+                            if (Sudoku.original[row][col] !== 0) continue;
+                            
+                            if (Sudoku.notes[row][col].size === 1) {
+                                const num = Array.from(Sudoku.notes[row][col])[0];
+                                Sudoku.board[row][col] = num;
+                                updateRelatedNotes(row, col, num);
+                                filledAny = true;
+                                filledCount++;
+                                filledInIteration++;
+                                
+                                const cell = getCellElement(row, col);
+                                cell.classList.add('bg-primary/30', 'pulse');
+                                setTimeout(() => {
+                                    cell.classList.remove('bg-primary/30', 'pulse');
+                                }, 500);
+                            }
+                        }
+                    }
+                    
+                    if (filledInIteration === 0) {
+                        break;
+                    }
+                }
+                
+                updateBoardUI();
+                
+                if (filledAny) {
+                    statusMessage.textContent = `已自动填充 ${filledCount} 个唯一解的单元格`;
+                    checkCompletion();
+                } else {
+                    statusMessage.textContent = '当前没有可以自动填充的唯一解单元格';
+                }
+            }
+
+            function moveToNextCell() {
+                if (!Sudoku.selectedCell) return;
+                
+                let { row, col } = Sudoku.selectedCell;
+                
+                col++;
+                if (col >= 9) {
+                    col = 0;
+                    row++;
+                    if (row >= 9) {
+                        row = 0;
+                    }
+                }
+                
+                while (row < 9 && Sudoku.original[row][col] !== 0) {
+                    col++;
+                    if (col >= 9) {
+                        col = 0;
+                        row++;
+                    }
+                }
+                
+                if (row < 9) {
+                    selectCell(row, col);
+                }
+            }
+
+            function checkSolution() {
+                if (!Sudoku.gameStarted) return;
+                
+                if (Sudoku.timerPaused) {
+                    toggleTimer();
+                }
+                
+                let isComplete = true;
+                let hasErrors = false;
+                
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const cell = getCellElement(row, col);
+                        const value = Sudoku.board[row][col];
+                        
+                        cell.classList.remove('error-cell', 'success-cell');
+                        
+                        if (value === 0) {
+                            isComplete = false;
+                            continue;
+                        }
+                        
+                        if (value !== Sudoku.solution[row][col]) {
+                            cell.classList.add('error-cell');
+                            hasErrors = true;
+                        } else {
+                            cell.classList.add('success-cell');
+                        }
+                    }
+                }
+                
+                if (!isComplete) {
+                    statusMessage.textContent = '谜题尚未完成，请继续填充';
+                } else if (hasErrors) {
+                    statusMessage.textContent = '发现错误，请检查标红的单元格';
+                } else {
+                    completeGame();
+                }
+            }
+
+            function completeGame() {
+                stopTimer();
+                
+                const currentBest = Sudoku.bestTimes[Sudoku.difficulty];
+                let isNewBest = false;
+                
+                if (!currentBest || Sudoku.elapsedTime < currentBest) {
+                    isNewBest = true;
+                    Sudoku.bestTimes[Sudoku.difficulty] = Sudoku.elapsedTime;
+                    localStorage.setItem(`sudoku_best_${Sudoku.difficulty}`, Sudoku.elapsedTime);
+                    updateBestTimesDisplay();
+                }
+                
+                animateCompletion();
+                
+                setTimeout(() => {
+                    showCelebrationModal(isNewBest);
+                }, 1500);
+            }
+
+            function animateCompletion() {
+                const colors = ['#7C9EB2', '#A8C6D9', '#5A7B8C', '#D9BFA9', '#FFE8D6', '#E8D6CB', '#9DC3C2', '#B8D8D8', '#D9BFB7'];
+                
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        const cell = getCellElement(row, col);
+                        const delay = (row * 9 + col) * 50;
+                        
+                        setTimeout(() => {
+                            cell.classList.add('celebrate', 'color-transition');
+                            cell.style.color = colors[Math.floor(Math.random() * colors.length)];
+                        }, delay);
+                    }
+                }
+            }
+
+            function removeCelebrationEffects() {
+                const cells = document.querySelectorAll('.cell');
+                cells.forEach(cell => {
+                    cell.classList.remove('celebrate', 'color-transition', 'bg-primary/30', 'pulse');
+                    cell.style.color = '';
+                    cell.style.backgroundColor = '';
+                });
+            }
+
+            function startGame() {
+                Sudoku.gameStarted = true;
+                Sudoku.startTime = Date.now() - Sudoku.elapsedTime * 1000;
+                Sudoku.timerPaused = false;
+                startTimer();
+                statusMessage.textContent = '游戏进行中...';
+                timerStatus.textContent = '计时器运行中';
+                timerStatus.className = 'text-primary';
+                pauseIcon.className = 'fa fa-pause';
+                Sudoku.inputMode = 'normal';
+                updateInputModeDisplay();
+            }
+
+            function startTimer() {
+                if (Sudoku.timerInterval) clearInterval(Sudoku.timerInterval);
+                
+                Sudoku.timerInterval = setInterval(() => {
+                    if (!Sudoku.timerPaused) {
+                        Sudoku.elapsedTime = Math.floor((Date.now() - Sudoku.startTime) / 1000);
+                        updateTimerDisplay();
+                    }
+                }, 1000);
+            }
+
+            function stopTimer() {
+                if (Sudoku.timerInterval) {
+                    clearInterval(Sudoku.timerInterval);
+                    Sudoku.timerInterval = null;
+                }
+            }
+
+            function toggleTimer() {
+                if (!Sudoku.gameStarted) return;
+                
+                Sudoku.timerPaused = !Sudoku.timerPaused;
+                
+                if (Sudoku.timerPaused) {
+                    pauseIcon.className = 'fa fa-play';
+                    timerStatus.textContent = '计时器已暂停';
+                    timerStatus.className = 'text-primary/70';
+                    statusMessage.textContent = '计时器已暂停，点击继续';
+                } else {
+                    pauseIcon.className = 'fa fa-pause';
+                    timerStatus.textContent = '计时器运行中';
+                    timerStatus.className = 'text-primary';
+                    Sudoku.startTime = Date.now() - Sudoku.elapsedTime * 1000;
+                    statusMessage.textContent = '游戏进行中...';
+                }
+            }
+
+            function updateTimerDisplay() {
+                const hours = Math.floor(Sudoku.elapsedTime / 3600);
+                const minutes = Math.floor((Sudoku.elapsedTime % 3600) / 60);
+                const seconds = Sudoku.elapsedTime % 60;
+                
+                const timeString = hours > 0 
+                    ? `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+                    : `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                timerDisplay.textContent = timeString;
+                currentTimeDisplay.textContent = formatTime(Sudoku.elapsedTime);
+            }
+
+            function formatTime(seconds) {
+                const minutes = Math.floor(seconds / 60);
+                const secs = seconds % 60;
+                return `${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+
+            function updatePuzzleDisplay() {
+                puzzleNumberDisplay.textContent = `谜题 #${Sudoku.puzzleIndex}`;
+                currentPuzzleDisplay.textContent = `${Sudoku.puzzleIndex}/100`;
+                completedPuzzleNumDisplay.textContent = Sudoku.puzzleIndex;
+                
+                const difficultyText = {
+                    'hard': '困难级',
+                    'expert': '专家级',
+                    'master': '大师级'
+                };
+                completionDifficultyDisplay.textContent = `成功完成${difficultyText[Sudoku.difficulty]}谜题！`;
+            }
+
+            function showRulesModal() {
+                rulesModal.classList.remove('opacity-0', 'pointer-events-none');
+                rulesModal.querySelector('div').classList.remove('scale-95');
+                rulesModal.querySelector('div').classList.add('scale-100');
+            }
+
+            function hideRulesModal() {
+                rulesModal.classList.add('opacity-0', 'pointer-events-none');
+                rulesModal.querySelector('div').classList.remove('scale-100');
+                rulesModal.querySelector('div').classList.add('scale-95');
+            }
+
+            function showCelebrationModal(isNewBest) {
+                timeValueElement.textContent = formatTime(Sudoku.elapsedTime);
+                bestTimeMessage.style.display = isNewBest ? 'block' : 'none';
+                
+                celebrationModal.classList.remove('opacity-0', 'pointer-events-none');
+                celebrationModal.querySelector('div').classList.remove('scale-95');
+                celebrationModal.querySelector('div').classList.add('scale-100');
+            }
+
+            function hideCelebrationModal() {
+                celebrationModal.classList.add('opacity-0', 'pointer-events-none');
+                celebrationModal.querySelector('div').classList.remove('scale-100');
+                celebrationModal.querySelector('div').classList.add('scale-95');
+                
+                setTimeout(removeCelebrationEffects, 300);
+            }
+            
+            function checkCompletion() {
+                for (let row = 0; row < 9; row++) {
+                    for (let col = 0; col < 9; col++) {
+                        if (Sudoku.board[row][col] === 0) {
+                            return false;
+                        }
+                    }
+                }
+                
+                completeGame();
+                return true;
+            }
+
+            function startNewGame() {
+                stopTimer();
+                Sudoku.gameStarted = false;
+                Sudoku.selectedCell = null;
+                Sudoku.elapsedTime = 0;
+                Sudoku.timerPaused = false;
+                Sudoku.highlightNumber = null;
+                Sudoku.inputMode = 'normal';
+                Sudoku.undoStack = [];
+                
+                pauseIcon.className = 'fa fa-pause';
+                timerStatus.textContent = '计时器运行中';
+                timerStatus.className = 'text-primary';
+                
+                removeCelebrationEffects();
+                generateSudoku(Sudoku.difficulty);
+                statusMessage.textContent = '请开始填充数字';
+                updateTimerDisplay();
+                updateInputModeDisplay();
+                clearNumberHighlight();
+                clearRowColHighlight();
+            }
+
+            function nextPuzzle() {
+                Sudoku.puzzleIndex = Sudoku.puzzleIndex >= 100 ? 1 : Sudoku.puzzleIndex + 1;
+                startNewGame();
+            }
+
+            // 事件监听器
+            newGameButton.addEventListener('click', startNewGame);
+            checkSolutionButton.addEventListener('click', checkSolution);
+            fillToggleButton.addEventListener('click', fillAllPossibleNotes);
+            fillUniqueButton.addEventListener('click', autoFillAllUnique);
+            btnFillUnique.addEventListener('click', autoFillAllUnique);
+            updateNotesButton.addEventListener('click', calculateAllNotes);
+            pauseTimerButton.addEventListener('click', toggleTimer);
+            btnUndo.addEventListener('click', undoLastAction);
+            btnUndoDesktop.addEventListener('click', undoLastAction);
+            
+            btnNotesMode.addEventListener('click', function(e) {
+                console.log('备注按钮被点击');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (Sudoku.inputMode === 'notes') {
+                    Sudoku.inputMode = 'normal';
+                } else {
+                    Sudoku.inputMode = 'notes';
+                }
+                updateInputModeDisplay();
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+            });
+            
+            btnDeleteNote.addEventListener('click', function(e) {
+                console.log('删备按钮被点击');
+                e.preventDefault();
+                e.stopPropagation();
+                
+                if (Sudoku.inputMode === 'delete-notes') {
+                    Sudoku.inputMode = 'normal';
+                } else {
+                    Sudoku.inputMode = 'delete-notes';
+                }
+                updateInputModeDisplay();
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+            });
+            
+            btnClear.addEventListener('click', function(e) {
+                console.log('清除按钮被点击');
+                e.preventDefault();
+                e.stopPropagation();
+                clearCell();
+                
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(10);
+                }
+            });
+            
+            numberKeys.forEach(button => {
+                button.addEventListener('touchstart', function(e) {
+                    console.log('数字按钮触摸:', this.dataset.number);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const num = parseInt(this.dataset.number);
+                    handleNumberInput(num);
+                });
+                
+                button.addEventListener('click', function(e) {
+                    console.log('数字按钮点击:', this.dataset.number);
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const num = parseInt(this.dataset.number);
+                    handleNumberInput(num);
+                });
+            });
+            
+            difficultyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    difficultyButtons.forEach(btn => {
+                        btn.classList.remove('active', 'bg-primary/40');
+                        if (btn.id === 'master') {
+                            btn.classList.remove('glow');
+                        }
+                    });
+                    button.classList.add('active', 'bg-primary/40');
+                    if (button.id === 'master') {
+                        button.classList.add('glow');
+                    }
+                    
+                    Sudoku.difficulty = button.id;
+                    Sudoku.puzzleIndex = 1;
+                    startNewGame();
+                });
+            });
+            
+            showRulesButton.addEventListener('click', showRulesModal);
+            closeRulesButton.addEventListener('click', hideRulesModal);
+            closeRulesBtn.addEventListener('click', hideRulesModal);
+            closeCelebrationButton.addEventListener('click', hideCelebrationModal);
+            newGameAfterWinButton.addEventListener('click', () => {
+                hideCelebrationModal();
+                nextPuzzle();
+            });
+            
+            document.addEventListener('keydown', (e) => {
+                if (e.key >= '1' && e.key <= '9' && !e.shiftKey && !e.altKey) {
+                    inputNumber(parseInt(e.key), false);
+                }
+                
+                if (e.key >= '1' && e.key <= '9' && e.shiftKey) {
+                    inputNumber(parseInt(e.key), true);
+                }
+                
+                if (e.key >= '1' && e.key <= '9' && e.altKey) {
+                    if (Sudoku.selectedCell) {
+                        const { row, col } = Sudoku.selectedCell;
+                        const num = parseInt(e.key);
+                        
+                        if (Sudoku.original[row][col] !== 0) {
+                            statusMessage.textContent = '不能修改初始数字';
+                            return;
+                        }
+                        
+                        saveToUndoStack();
+                        
+                        if (Sudoku.notes[row][col].has(num)) {
+                            Sudoku.notes[row][col].delete(num);
+                            
+                            if (Sudoku.notes[row][col].size === 1) {
+                                const lastNote = Array.from(Sudoku.notes[row][col])[0];
+                                Sudoku.board[row][col] = lastNote;
+                                Sudoku.notes[row][col].clear();
+                                updateRelatedNotes(row, col, lastNote);
+                                statusMessage.textContent = `已删除备注并自动填入数字 ${lastNote}`;
+                                checkCompletion();
+                                moveToNextCell();
+                            } else {
+                                statusMessage.textContent = `已删除备注 ${num}`;
+                            }
+                            
+                            updateBoardUI();
+                        } else {
+                            statusMessage.textContent = `备注中没有数字 ${num}`;
+                        }
+                    }
+                }
+                
+                if (e.key === 'Delete' || e.key === 'Backspace') {
+                    clearCell();
+                }
+                
+                if (e.key === ' ' || e.key === 'Spacebar') {
+                    e.preventDefault();
+                    toggleTimer();
+                }
+                
+                if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+                    e.preventDefault();
+                    undoLastAction();
+                }
+                
+                if (Sudoku.selectedCell) {
+                    let { row, col } = Sudoku.selectedCell;
+                    
+                    switch (e.key) {
+                        case 'ArrowUp':
+                            row = Math.max(0, row - 1);
+                            break;
+                        case 'ArrowDown':
+                            row = Math.min(8, row + 1);
+                            break;
+                        case 'ArrowLeft':
+                            col = Math.max(0, col - 1);
+                            break;
+                        case 'ArrowRight':
+                            col = Math.min(8, col + 1);
+                            break;
+                        default:
+                            return;
+                    }
+                    
+                    while (row < 9 && Sudoku.original[row][col] !== 0) {
+                        switch (e.key) {
+                            case 'ArrowUp':
+                                row = Math.max(0, row - 1);
+                                break;
+                            case 'ArrowDown':
+                                row = Math.min(8, row + 1);
+                                break;
+                            case 'ArrowLeft':
+                                col = Math.max(0, col - 1);
+                                break;
+                            case 'ArrowRight':
+                                col = Math.min(8, col + 1);
+                                break;
+                        }
+                        
+                        if ((e.key === 'ArrowUp' && row === 0) || 
+                            (e.key === 'ArrowDown' && row === 8) || 
+                            (e.key === 'ArrowLeft' && col === 0) || 
+                            (e.key === 'ArrowRight' && col === 8)) {
+                            break;
+                        }
+                    }
+                    
+                    selectCell(row, col);
+                }
+            });
+
+            // 初始化游戏
+            initializeBoard();
+            generateSudoku(Sudoku.difficulty);
+            updateBestTimesDisplay();
+            updatePuzzleDisplay();
+            updateInputModeDisplay();
+            
+            console.log('游戏初始化完成 - 使用新的柔和配色方案');
+            console.log('谜题随机化已启用，确保每次游戏不同');
+        });
+    </script>
+</body>
+</html>
